@@ -1,0 +1,25 @@
+{
+  "name": "minimi-agent",
+  "version": "1.0.0",
+  "description": "Chronos-Diff: High-precision temporal conversational agent with batched single web search tool",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "tsx test/run-all.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^3.0.0",
+    "chrono-node": "^2.7.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
