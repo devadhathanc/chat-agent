@@ -15,7 +15,12 @@ export class AgentOrchestrator {
   private ledger: EventLedger;
   private searchEngine: WebSearchEngine;
   private geminiClient?: GoogleGenAI;
-  private modelName = 'gemini-2.0-flash';
+  private candidateModels = [
+    'gemini-3.1-flash-lite',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash-lite'
+  ];
 
   constructor(ledger: EventLedger, searchEngine: WebSearchEngine) {
     this.ledger = ledger;
@@ -118,47 +123,81 @@ export class AgentOrchestrator {
     }
 
     // 3. Assemble prompt with strict epistemic calibration contract
-    const systemPrompt = `You are a world-class, rigorous conversational agent. You have exactly one tool capability: web search.
+    const systemPrompt = `You are a world-class, highly knowledgeable, and pleasant conversational AI chat agent. You have exactly one tool capability: web search.
 
 CURRENT DATE & TIME: Today is ${nowStr}.
-${projectedBaseline}
-${searchContext}
+
+CONVERSATIONAL EXCELLENCE & MEMORY:
+- Maintain full conversational context across our multi-turn chat session. Remember what the user told you earlier in the session.
+- Synthesize all information into natural, engaging, and well-structured responses.
+- When live web search results are provided, synthesize them into a thorough, insightful, and comprehensive natural language answer. NEVER simply output raw links or dump snippets—explain the answer clearly, compare options, and incorporate inline markdown citations like [Source](url).
 
 EPISTEMIC CALIBRATION & DELTA CONTRACT:
 When comparing current state against a past baseline (e.g. "since Monday", "is your answer from Nov 3 still correct"):
 1. CONFIRMED CHANGED: Claim a change ONLY if there is explicit evidence published after the baseline date showing new pricing or a shipped release. State the baseline price, the new price, and cite the source.
 2. CONFIRMED UNCHANGED: If the latest evidence shows the same pricing/feature structure, explicitly confirm it remains unchanged since the baseline date.
 3. UNVERIFIABLE DELTA: If an official pricing page has no changelog or publication timestamp, report the current price honestly and state that no dated delta was published since the baseline date.
-4. CITATIONS: Use inline markdown links or bracketed citations [Source Name](url) for all factual claims.
-5. CONVERSATIONAL TONE: Be crisp, clear, direct, and pleasant. Avoid unnecessary preamble.`;
+4. CITATIONS: Use inline markdown links or bracketed citations [Source Name](url) for all factual claims.`;
 
-    // 4. Retrieve recent active session turns
-    const recentMessages = this.ledger.getSessionMessages(sessionId, 6);
-    const conversationHistory = recentMessages
-      .map(m => `${m.role.toUpperCase()}: ${m.content}`)
-      .join('\n\n');
+    // 4. Retrieve recent active session turns for full multi-turn conversational memory
+    const recentMessages = this.ledger.getSessionMessages(sessionId, 10);
+    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
-    const fullPrompt = `${systemPrompt}\n\n${conversationHistory ? `RECENT CONVERSATION:\n${conversationHistory}\n\n` : ''}USER: ${userPrompt}\nASSISTANT:`;
+    for (const msg of recentMessages) {
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      });
+    }
+
+    // Append current turn with ground context
+    let promptPayload = '';
+    if (projectedBaseline) {
+      promptPayload += `${projectedBaseline}\n\n`;
+    }
+    if (searchContext) {
+      promptPayload += `${searchContext}\n\n`;
+    }
+    promptPayload += userPrompt;
+
+    contents.push({
+      role: 'user',
+      parts: [{ text: promptPayload }]
+    });
 
     callbacks?.onStatusUpdate?.('Synthesizing verified response...');
 
     let finalContent = '';
     if (this.geminiClient) {
-      try {
-        const responseStream = await this.geminiClient.models.generateContentStream({
-          model: this.modelName,
-          contents: [{ role: 'user', parts: [{ text: fullPrompt }] }]
-        });
+      let streamSucceeded = false;
+      for (const model of this.candidateModels) {
+        try {
+          const responseStream = await this.geminiClient.models.generateContentStream({
+            model,
+            contents,
+            config: {
+              systemInstruction: systemPrompt
+            }
+          });
 
-        for await (const chunk of responseStream) {
-          const text = chunk.text || '';
-          if (text) {
-            finalContent += text;
-            callbacks?.onToken?.(text);
+          for await (const chunk of responseStream) {
+            const text = chunk.text || '';
+            if (text) {
+              finalContent += text;
+              callbacks?.onToken?.(text);
+            }
           }
+
+          if (finalContent.length > 0) {
+            streamSucceeded = true;
+            break;
+          }
+        } catch (err) {
+          console.warn(`Model ${model} stream error:`, err);
         }
-      } catch (err) {
-        console.warn('Gemini stream error, falling back to local synthesizer:', err);
+      }
+
+      if (!streamSucceeded) {
         finalContent = this.synthesizeLocally(userPrompt, projectedBaseline, searchContext, nowStr);
         callbacks?.onToken?.(finalContent);
       }
