@@ -59,3 +59,4 @@ export interface DeltaItem {
   publishedDate?: string;
   explanation: string;
 }
+

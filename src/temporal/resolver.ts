@@ -76,3 +76,4 @@ function formatDateRange(start: Date, end: Date): string {
   });
   return `${startStr} to ${endStr}`;
 }
+

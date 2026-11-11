@@ -121,3 +121,4 @@ app.listen(port, () => {
   console.log(`• Single Tool: Web Search (${process.env.TAVILY_API_KEY ? 'Tavily' : process.env.EXA_API_KEY ? 'Exa' : 'Offline Grounded Provider'})`);
   console.log(`======================================================\n`);
 });
+

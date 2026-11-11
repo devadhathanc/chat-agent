@@ -293,3 +293,4 @@ On Tuesday, Nov 3, we compared the leading managed Postgres hosting providers. H
     return `Retrieved live web evidence for today (${nowStr}). All baseline assumptions have been verified against current documentation with no detected breaking changes or unannounced price adjustments.`;
   }
 }
+

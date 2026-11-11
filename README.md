@@ -78,3 +78,4 @@ See [`DESIGN.md`](./DESIGN.md) for the complete 1-page architectural breakdown:
 - **Batched Single Tool**: 1 tool call executes $N$ parallel HTTP queries with in-memory TTL caching.
 - **3-Way Epistemic Delta Contract**: Categorizes deltas into *Confirmed Changed*, *Confirmed Unchanged*, or *Unverifiable Delta*.
 - **Rejected Alternatives & Roadmap**: Full discussion of what was rejected and next-stage enhancements.
+

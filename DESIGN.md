@@ -83,3 +83,4 @@ Runs out of the box with `npm install` followed by `npm run dev` in `<200ms`. No
    - Bundle an in-process ONNX runtime for System 1 intent routing directly within Node.js, bypassing LLM inference for pure memory retrieval in `<15ms`.
 4. **Evaluation Benchmark Suite Expansion:**
    - Expand our automated eval harness (`npm test`) with synthetic temporal perturbations across multiple timezones and multi-turn adversarial memory updates.
+
